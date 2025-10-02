@@ -247,6 +247,27 @@
             return {grade: 'No Grade', points: 0};
         }
 
+        function assignRanksAndBonuses(studentMarks) {
+            studentMarks.sort((a, b) => b.marks - a.marks);
+            let rank = 1;
+            let i = 0;
+            while (i < studentMarks.length && rank <= 3) {
+                const currMarks = studentMarks[i].marks;
+                let j = i;
+                while (j < studentMarks.length && studentMarks[j].marks === currMarks) {
+                    studentMarks[j].place = rank;
+                    studentMarks[j].points += [5, 3, 1][rank - 1];
+                    j++;
+                }
+                i = j;
+                rank++;
+            }
+            // Students beyond 3rd have no place
+            for (let k = i; k < studentMarks.length; k++) {
+                studentMarks[k].place = null;
+            }
+        }
+
         // Utils
         window.showToast = function(message, type = 'success') {
             const toastEl = document.getElementById('liveToast');
@@ -387,62 +408,54 @@
                 };
             }).filter(Boolean);
 
-            // Sort by marks desc for places
-            studentMarks.sort((a, b) => b.marks - a.marks);
-
-            // Assign places and bonuses
-            studentMarks.forEach((s, i) => {
-                s.place = i + 1;
-                if (i < 3) {
-                    s.points += [5, 3, 1][i];
-                }
-            });
+            // Assign ranks and bonuses
+            assignRanksAndBonuses(studentMarks);
 
             // Filter qualifying
-            const top3Ids = studentMarks.slice(0, 3).map(s => s.studentId);
-            const qualifying = studentMarks.filter(s => s.marks >= 50 || top3Ids.includes(s.studentId));
+            const topPlacedIds = studentMarks.filter(s => s.place && s.place <= 3).map(s => s.studentId);
+            const qualifying = studentMarks.filter(s => s.marks >= 50 || topPlacedIds.includes(s.studentId));
 
-            // Update marksDetails
+            // Update marksDetails with total points
             const marksDetails = {};
-            studentMarks.forEach(s => {  // Use all for details, but qualifying for alloc
+            studentMarks.forEach(s => {
                 marksDetails[s.studentId] = {
                     codeLetter: s.codeLetter,
                     rawMarks: s.marks,
                     grade: s.grade,
-                    points: s.points - (s.place <= 3 ? [5,3,1][s.place-1] : 0),  // base points
+                    points: s.points,
                     place: s.place
                 };
             });
             currentProg.marksDetails = marksDetails;
 
-            // Render qualifying
+            // Render
             const tbody = document.getElementById('marksTbody');
             const suffix = ['st', 'nd', 'rd', 'th'];
             tbody.innerHTML = qualifying.map(s => {
-                const bonus = s.place <= 3 ? [5,3,1][s.place-1] : 0;
-                const basePoints = s.points - bonus;
+                const bonus = s.place && s.place <= 3 ? [5, 3, 1][s.place - 1] : 0;
+                const placeDisplay = s.place ? `${s.place}${suffix[Math.min(3, s.place - 1)]}${bonus > 0 ? ` (Bonus: +${bonus})` : ''}` : '-';
                 return `
                     <tr>
                         <td>${s.codeLetter}</td>
                         <td>${s.chestNo}</td>
                         <td>${s.name}</td>
                         <td>${s.team}</td>
-                        <td>${s.place}${suffix[Math.min(3, s.place-1)]}${bonus > 0 ? ` (Bonus: +${bonus})` : ''}</td>
+                        <td>${placeDisplay}</td>
                         <td>${s.grade}</td>
                         <td>${s.points}</td>
                         <td>
-                            <button class="btn btn-sm btn-outline-primary ${editMode ? 'd-none' : ''}" onclick="enableEditMode('${s.studentId}')">Edit</button>
+                            ${!currentProg.finalized ? `<button class="btn btn-sm btn-outline-primary ${editMode ? 'd-none' : ''}" onclick="enableEditMode('${s.studentId}')">Edit</button>
                             ${editMode ? `
                                 <input type="number" class="form-control mt-1 marks-input editable" value="${s.marks}" style="width:80px; display:inline-block;" oninput="updateStudentMark('${s.studentId}', this.value)">
                                 <button class="btn btn-sm btn-success mt-1" onclick="saveEdit('${s.studentId}')">Update</button>
-                            ` : ''}
+                            ` : ''}` : ''}
                         </td>
                     </tr>
                 `;
             }).join('');
 
             if (currentProg.finalized) {
-                tbody.querySelectorAll('button').forEach(b => b.style.display = 'none');
+                tbody.querySelectorAll('button, input').forEach(el => el.style.display = 'none');
             }
         }
 
@@ -512,24 +525,22 @@
                 };
             }).filter(Boolean);
 
-            // Sort and bonuses
-            studentMarks.sort((a, b) => b.marks - a.marks);
-            studentMarks.slice(0, 3).forEach((s, i) => s.points += [5, 3, 1][i]);
+            // Assign ranks and bonuses
+            assignRanksAndBonuses(studentMarks);
 
             // Qualifying
-            const top3Ids = studentMarks.slice(0, 3).map(s => s.studentId);
-            const qualifying = studentMarks.filter(s => s.marks >= 50 || top3Ids.includes(s.studentId));
+            const topPlacedIds = studentMarks.filter(s => s.place && s.place <= 3).map(s => s.studentId);
+            const qualifying = studentMarks.filter(s => s.marks >= 50 || topPlacedIds.includes(s.studentId));
 
             // marksDetails
             const marksDetails = {};
             studentMarks.forEach(s => {
-                const bonus = s.place <= 3 ? [5,3,1][s.place-1] : 0;
                 marksDetails[s.studentId] = {
                     codeLetter: codeLetters[s.studentId],
                     rawMarks: s.marks,
                     grade: s.grade,
-                    points: s.points - bonus,
-                    place: studentMarks.indexOf(s) + 1
+                    points: s.points,
+                    place: s.place
                 };
             });
 
