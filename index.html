@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mark Media Panel - Fest Management Software</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --secondary-gradient: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            --success-gradient: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            --danger-gradient: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(to bottom, #f0f2f5, #ffffff);
+            min-height: 100vh;
+        }
+        .header {
+            background: var(--primary-gradient);
+            color: white;
+            padding: 1rem 2rem;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        }
+        .search-section {
+            background: white;
+            border-radius: 15px;
+            padding: 2rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            margin-bottom: 2rem;
+        }
+        .programme-card {
+            background: white;
+            border-radius: 15px;
+            padding: 1.5rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            margin-bottom: 1rem;
+        }
+        .programme-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+        }
+        .programme-card.finalized {
+            opacity: 0.7;
+            border-left: 5px solid var(--success-gradient);
+        }
+        .table {
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+        }
+        .table thead th {
+            background: var(--primary-gradient);
+            color: white;
+            border: none;
+            font-weight: 600;
+        }
+        .table tbody tr:hover {
+            background: rgba(102, 126, 234, 0.05);
+        }
+        .btn {
+            border-radius: 25px;
+            padding: 0.5rem 1.5rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+        .modal-content {
+            border-radius: 20px;
+            border: none;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+        }
+        .form-control, .form-select {
+            border-radius: 10px;
+            border: 2px solid #e9ecef;
+            transition: border-color 0.3s ease;
+        }
+        .form-control:focus, .form-select:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+        }
+        .toast-container {
+            z-index: 1055;
+        }
+        .loading {
+            opacity: 0.6;
+            pointer-events: none;
+        }
+        .editable input {
+            background-color: #fff3cd;
+        }
+        @media (max-width: 768px) {
+            .programme-card {
+                margin-bottom: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <h1 class="mb-0 fw-bold">Mark Media Panel</h1>
+    </header>
+
+    <main class="container-fluid p-4">
+        <!-- Search & Filter Section -->
+        <div class="search-section">
+            <h2 class="mb-3 fw-bold text-dark">Programme Marks Review</h2>
+            <div class="row mb-3">
+                <div class="col-md-4">
+                    <input type="text" class="form-control" id="programmeSearch" placeholder="Search by programme name..." onkeyup="filterProgrammes()">
+                </div>
+                <div class="col-md-4">
+                    <select class="form-select" id="categoryFilter" onchange="filterProgrammes()">
+                        <option value="">All Categories</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <select class="form-select" id="finalizedFilter" onchange="filterProgrammes()">
+                        <option value="">All Status</option>
+                        <option value="true">Finalized</option>
+                        <option value="false">Not Finalized</option>
+                    </select>
+                </div>
+            </div>
+            <div id="programmeCards" class="row"></div>
+        </div>
+    </main>
+
+    <!-- View Programme Modal -->
+    <div class="modal fade" id="viewModal" tabindex="-1">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title" id="modalTitle">Programme Marks</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Code Letter</th>
+                                    <th>Chest Number</th>
+                                    <th>Student Name</th>
+                                    <th>Team</th>
+                                    <th>Place</th>
+                                    <th>Grade</th>
+                                    <th>Points</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="marksTbody"></tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Password Modal -->
+    <div class="modal fade" id="editPasswordModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Enter Edit Password</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="password" class="form-control" id="editPassword" placeholder="Password">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="checkEditPassword()">Confirm</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div class="toast-container position-fixed top-0 end-0 p-3">
+        <div id="liveToast" class="toast align-items-center text-white bg-success border-0" role="alert">
+            <div class="d-flex">
+                <div class="toast-body" id="toastBody"></div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-app.js";
+        import { getFirestore, collection, getDocs, doc, getDoc, updateDoc, query, where, onSnapshot, orderBy } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyC0eal8jWB6ksEpFCEYMRIOhzpAROwlXns",
+            authDomain: "festhub-d7138.firebaseapp.com",
+            projectId: "festhub-d7138",
+            storageBucket: "festhub-d7138.firebasestorage.app",
+            messagingSenderId: "396565568701",
+            appId: "1:396565568701:web:c2c4001be99eef231a6bd4"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        let programmesWithMarks = [];
+        let students = [];
+        let teams = [];
+        let categories = [];
+        let unsubscribeMarks = null;
+        let unsubscribeStudents = null;
+        let unsubscribeTeams = null;
+        let unsubscribeCategories = null;
+        let currentProgrammeId = null;
+        let currentProg = null;
+        let editMode = false;
+
+        // Points Conversion Table
+        const pointsTable = {
+            1: {90: {grade: 'A+', points: 6}, 70: {grade: 'A', points: 5}, 60: {grade: 'B', points: 3}, 50: {grade: 'C', points: 1}, 0: {grade: 'No Grade', points: 0}},
+            2: {90: {grade: 'A+', points: 7}, 70: {grade: 'A', points: 6}, 60: {grade: 'B', points: 4}, 50: {grade: 'C', points: 2}, 0: {grade: 'No Grade', points: 0}},
+            3: {90: {grade: 'A+', points: 10}, 70: {grade: 'A', points: 9}, 60: {grade: 'B', points: 6}, 50: {grade: 'C', points: 3}, 0: {grade: 'No Grade', points: 0}},
+            4: {90: {grade: 'A+', points: 18}, 70: {grade: 'A', points: 13}, 60: {grade: 'B', points: 7}, 50: {grade: 'C', points: 3}, 0: {grade: 'No Grade', points: 0}},
+            5: {90: {grade: 'A+', points: 20}, 70: {grade: 'A', points: 15}, 60: {grade: 'B', points: 10}, 50: {grade: 'C', points: 5}, 0: {grade: 'No Grade', points: 0}},
+            10: {90: {grade: 'A+', points: 15}, 70: {grade: 'A', points: 10}, 60: {grade: 'B', points: 7}, 50: {grade: 'C', points: 3}, 0: {grade: 'No Grade', points: 0}},
+            20: {90: {grade: 'A+', points: 25}, 70: {grade: 'A', points: 20}, 60: {grade: 'B', points: 12}, 50: {grade: 'C', points: 6}, 0: {grade: 'No Grade', points: 0}}
+        };
+
+        function getPointsConfig(marks, groupSize) {
+            const thresholds = [90, 70, 60, 50, 0];
+            const key = groupSize === 1 ? 1 : groupSize <= 5 ? groupSize : groupSize <= 10 ? 10 : 20;
+            for (let t of thresholds) {
+                if (marks >= t) {
+                    return pointsTable[key][t] || {grade: 'No Grade', points: 0};
+                }
+            }
+            return {grade: 'No Grade', points: 0};
+        }
+
+        // Utils
+        window.showToast = function(message, type = 'success') {
+            const toastEl = document.getElementById('liveToast');
+            const toastBody = document.getElementById('toastBody');
+            toastBody.textContent = message;
+            toastEl.className = `toast align-items-center text-white bg-${type === 'success' ? 'success' : 'danger'} border-0`;
+            const toast = new bootstrap.Toast(toastEl);
+            toast.show();
+        };
+
+        function loadStudents() {
+            if (unsubscribeStudents) unsubscribeStudents();
+            const q = query(collection(db, 'students'), orderBy('chestNo'));
+            unsubscribeStudents = onSnapshot(q, (snapshot) => {
+                students = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+            });
+        }
+
+        function loadTeams() {
+            if (unsubscribeTeams) unsubscribeTeams();
+            const q = query(collection(db, 'teams'), orderBy('serial'));
+            unsubscribeTeams = onSnapshot(q, (snapshot) => {
+                teams = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+            });
+        }
+
+        function loadCategories() {
+            if (unsubscribeCategories) unsubscribeCategories();
+            const q = query(collection(db, 'categories'), orderBy('serial'));
+            unsubscribeCategories = onSnapshot(q, (snapshot) => {
+                categories = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+                populateCategoryFilter();
+            });
+        }
+
+        function populateCategoryFilter() {
+            const select = document.getElementById('categoryFilter');
+            select.innerHTML = '<option value="">All Categories</option>';
+            categories.forEach(cat => {
+                const option = new Option(cat.name, cat.name);
+                select.add(option);
+            });
+        }
+
+        function loadProgrammesWithMarks() {
+            if (unsubscribeMarks) unsubscribeMarks();
+            const q = query(collection(db, 'marks'), where('entries', '!=', []));
+            unsubscribeMarks = onSnapshot(q, async (snapshot) => {
+                const markDocs = snapshot.docs;
+                const progPromises = markDocs.map(async (markDoc) => {
+                    const markData = markDoc.data();
+                    const progQuery = query(collection(db, 'programmes'), where('name', '==', markData.programme));
+                    const progSnap = await getDocs(progQuery);
+                    if (!progSnap.empty) {
+                        const progData = progSnap.docs[0].data();
+                        return {
+                            id: progSnap.docs[0].id,
+                            markDocId: markDoc.id,
+                            ...progData,
+                            hasMarks: true,
+                            finalized: !!progData.finalized
+                        };
+                    }
+                    return null;
+                });
+                const allProgs = await Promise.all(progPromises);
+                programmesWithMarks = allProgs.filter(Boolean).sort((a, b) => (a.serial || 0) - (b.serial || 0));
+                filterProgrammes();
+            });
+        }
+
+        window.filterProgrammes = function() {
+            const search = document.getElementById('programmeSearch').value.toLowerCase();
+            const catFilter = document.getElementById('categoryFilter').value;
+            const finalizedFilter = document.getElementById('finalizedFilter').value;
+            const filtered = programmesWithMarks.filter(p =>
+                p.name.toLowerCase().includes(search) &&
+                (!catFilter || p.category === catFilter) &&
+                (finalizedFilter === '' || (p.finalized ? 'true' : 'false') === finalizedFilter)
+            );
+            renderProgrammeCards(filtered);
+        };
+
+        function renderProgrammeCards(progs) {
+            const container = document.getElementById('programmeCards');
+            if (progs.length === 0) {
+                container.innerHTML = '<div class="col-12"><div class="alert alert-info text-center">No programmes found.</div></div>';
+                return;
+            }
+            container.innerHTML = progs.map(p => `
+                <div class="col-md-4">
+                    <div class="programme-card ${p.finalized ? 'finalized' : ''}">
+                        <h5 class="fw-bold">${p.category} - ${p.name}</h5>
+                        <p class="text-muted">Type: ${p.type} ${p.category === 'General' ? `(Group ${p.participantCount})` : ''}</p>
+                        ${p.finalized ? '<span class="badge bg-success">Finalized</span>' : ''}
+                        <button class="btn btn-info me-2" onclick="openProgrammePopup('${p.id}')">View</button>
+                        ${!p.finalized ? `<button class="btn btn-success" onclick="confirmFinalize('${p.id}')">Finalize</button>` : ''}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        window.openProgrammePopup = async function(progId) {
+            currentProgrammeId = progId;
+            const progDoc = await getDoc(doc(db, 'programmes', progId));
+            if (!progDoc.exists()) return;
+            currentProg = { id: progId, ...progDoc.data() };
+            document.getElementById('modalTitle').textContent = `${currentProg.category} - ${currentProg.name}`;
+            await processAndRenderMarks(currentProg);
+            editMode = false;
+            new bootstrap.Modal(document.getElementById('viewModal')).show();
+        };
+
+        async function processAndRenderMarks(prog) {
+            const markQuery = query(collection(db, 'marks'), where('programme', '==', prog.name));
+            const markSnap = await getDocs(markQuery);
+            const mark = markSnap.docs[0]?.data() || {entries: []};
+            const entries = mark.entries || [];
+            const codeLetters = prog.codeLetters || {};
+            const groupSize = prog.category === 'General' ? (prog.participantCount || 1) : 1;
+
+            // Match entries to students
+            let studentMarks = entries.map(entry => {
+                const studentId = Object.keys(codeLetters).find(id => codeLetters[id] === entry.codeLetter);
+                const student = students.find(s => s.id === studentId);
+                if (!student) return null;
+                const rawMarks = prog.marksDetails?.[studentId]?.rawMarks || entry.marks || 0;
+                const config = getPointsConfig(rawMarks, groupSize);
+                return {
+                    studentId,
+                    codeLetter: entry.codeLetter,
+                    chestNo: student.chestNo,
+                    name: student.name,
+                    team: student.team,
+                    marks: rawMarks,
+                    grade: config.grade,
+                    points: config.points
+                };
+            }).filter(Boolean);
+
+            // Sort by marks desc for places
+            studentMarks.sort((a, b) => b.marks - a.marks);
+
+            // Assign places and bonuses
+            studentMarks.forEach((s, i) => {
+                s.place = i + 1;
+                if (i < 3) {
+                    s.points += [5, 3, 1][i];
+                }
+            });
+
+            // Filter qualifying
+            const top3Ids = studentMarks.slice(0, 3).map(s => s.studentId);
+            const qualifying = studentMarks.filter(s => s.marks >= 50 || top3Ids.includes(s.studentId));
+
+            // Update marksDetails
+            const marksDetails = {};
+            studentMarks.forEach(s => {  // Use all for details, but qualifying for alloc
+                marksDetails[s.studentId] = {
+                    codeLetter: s.codeLetter,
+                    rawMarks: s.marks,
+                    grade: s.grade,
+                    points: s.points - (s.place <= 3 ? [5,3,1][s.place-1] : 0),  // base points
+                    place: s.place
+                };
+            });
+            currentProg.marksDetails = marksDetails;
+
+            // Render qualifying
+            const tbody = document.getElementById('marksTbody');
+            const suffix = ['st', 'nd', 'rd', 'th'];
+            tbody.innerHTML = qualifying.map(s => {
+                const bonus = s.place <= 3 ? [5,3,1][s.place-1] : 0;
+                const basePoints = s.points - bonus;
+                return `
+                    <tr>
+                        <td>${s.codeLetter}</td>
+                        <td>${s.chestNo}</td>
+                        <td>${s.name}</td>
+                        <td>${s.team}</td>
+                        <td>${s.place}${suffix[Math.min(3, s.place-1)]}${bonus > 0 ? ` (Bonus: +${bonus})` : ''}</td>
+                        <td>${s.grade}</td>
+                        <td>${s.points}</td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-primary ${editMode ? 'd-none' : ''}" onclick="enableEditMode('${s.studentId}')">Edit</button>
+                            ${editMode ? `
+                                <input type="number" class="form-control mt-1 marks-input editable" value="${s.marks}" style="width:80px; display:inline-block;" oninput="updateStudentMark('${s.studentId}', this.value)">
+                                <button class="btn btn-sm btn-success mt-1" onclick="saveEdit('${s.studentId}')">Update</button>
+                            ` : ''}
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+
+            if (currentProg.finalized) {
+                tbody.querySelectorAll('button').forEach(b => b.style.display = 'none');
+            }
+        }
+
+        window.enableEditMode = function(studentId) {
+            new bootstrap.Modal(document.getElementById('editPasswordModal')).show();
+        };
+
+        window.checkEditPassword = function() {
+            const pw = document.getElementById('editPassword').value;
+            if (pw === '313') {
+                editMode = true;
+                bootstrap.Modal.getInstance(document.getElementById('editPasswordModal')).hide();
+                processAndRenderMarks(currentProg);
+                showToast('Edit mode enabled');
+            } else {
+                showToast('Invalid password', 'danger');
+            }
+        };
+
+        window.updateStudentMark = function(studentId, newMarkStr) {
+            const newMark = parseInt(newMarkStr);
+            if (isNaN(newMark) || newMark < 0) return;
+            currentProg.marksDetails[studentId].rawMarks = newMark;
+            processAndRenderMarks(currentProg);
+        };
+
+        window.saveEdit = async function(studentId) {
+            await updateDoc(doc(db, 'programmes', currentProgrammeId), { marksDetails: currentProg.marksDetails });
+            editMode = false;
+            processAndRenderMarks(currentProg);
+            showToast('Mark updated successfully');
+        };
+
+        window.confirmFinalize = function(progId) {
+            if (confirm('Are you sure you want to finalize points for this programme? Once finalized, it cannot be edited without admin intervention.')) {
+                finalizeProgramme(progId);
+            }
+        };
+
+        async function finalizeProgramme(progId) {
+            const progDoc = await getDoc(doc(db, 'programmes', progId));
+            if (!progDoc.exists() || progDoc.data().finalized) return;
+            const prog = { id: progId, ...progDoc.data() };
+            const markQuery = query(collection(db, 'marks'), where('programme', '==', prog.name));
+            const markSnap = await getDocs(markQuery);
+            const mark = markSnap.docs[0]?.data() || {entries: []};
+            const entries = mark.entries || [];
+            const codeLetters = prog.codeLetters || {};
+            const groupSize = prog.category === 'General' ? (prog.participantCount || 1) : 1;
+            const isOnStage = prog.type === 'On-stage';
+            const field = isOnStage ? 'onStage' : 'offStage';
+            const isIndividualOrGroup1 = prog.category !== 'General' || groupSize <= 1;
+
+            // Calculate studentMarks
+            let studentMarks = entries.map(entry => {
+                const studentId = Object.keys(codeLetters).find(id => codeLetters[id] === entry.codeLetter);
+                const student = students.find(s => s.id === studentId);
+                if (!student) return null;
+                const rawMarks = prog.marksDetails?.[studentId]?.rawMarks || entry.marks || 0;
+                const config = getPointsConfig(rawMarks, groupSize);
+                return {
+                    studentId,
+                    team: student.team,
+                    marks: rawMarks,
+                    points: config.points,
+                    grade: config.grade
+                };
+            }).filter(Boolean);
+
+            // Sort and bonuses
+            studentMarks.sort((a, b) => b.marks - a.marks);
+            studentMarks.slice(0, 3).forEach((s, i) => s.points += [5, 3, 1][i]);
+
+            // Qualifying
+            const top3Ids = studentMarks.slice(0, 3).map(s => s.studentId);
+            const qualifying = studentMarks.filter(s => s.marks >= 50 || top3Ids.includes(s.studentId));
+
+            // marksDetails
+            const marksDetails = {};
+            studentMarks.forEach(s => {
+                const bonus = s.place <= 3 ? [5,3,1][s.place-1] : 0;
+                marksDetails[s.studentId] = {
+                    codeLetter: codeLetters[s.studentId],
+                    rawMarks: s.marks,
+                    grade: s.grade,
+                    points: s.points - bonus,
+                    place: studentMarks.indexOf(s) + 1
+                };
+            });
+
+            // Updates
+            const updates = [];
+            qualifying.forEach(s => {
+                if (isIndividualOrGroup1) {
+                    const student = students.find(st => st.id === s.studentId);
+                    const currentField = Number(student.marks?.[field] || 0);
+                    const currentTotal = Number(student.marks?.total || 0);
+                    updates.push(updateDoc(doc(db, 'students', s.studentId), {
+                        [`marks.${field}`]: currentField + s.points,
+                        'marks.total': currentTotal + s.points
+                    }));
+                }
+                // Team always
+                const teamObj = teams.find(t => t.name === s.team);
+                if (teamObj) {
+                    const currentTeamTotal = Number(teamObj.marks?.total || 0);
+                    updates.push(updateDoc(doc(db, 'teams', teamObj.id), {
+                        'marks.total': currentTeamTotal + s.points
+                    }));
+                }
+            });
+
+            // Programme
+            updates.push(updateDoc(doc(db, 'programmes', progId), {
+                marksDetails,
+                finalized: true,
+                finalizedAt: new Date()
+            }));
+
+            try {
+                await Promise.all(updates);
+                showToast('Programme finalized successfully');
+                loadProgrammesWithMarks();
+            } catch (error) {
+                showToast('Error finalizing programme: ' + error.message, 'danger');
+            }
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            loadStudents();
+            loadTeams();
+            loadCategories();
+            loadProgrammesWithMarks();
+            document.getElementById('programmeCards').innerHTML = '<div class="col-12"><div class="alert alert-info text-center">Loading programmes...</div></div>';
+        });
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+</body>
+</html>
