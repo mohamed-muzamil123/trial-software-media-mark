@@ -147,11 +147,11 @@
                         <table class="table table-hover">
                             <thead>
                                 <tr>
+                                    <th>Place</th>
                                     <th>Code Letter</th>
                                     <th>Chest Number</th>
                                     <th>Student Name</th>
                                     <th>Team</th>
-                                    <th>Place</th>
                                     <th>Grade</th>
                                     <th>Points</th>
                                     <th>Actions</th>
@@ -230,22 +230,29 @@
             1: {90: {grade: 'A+', points: 6}, 70: {grade: 'A', points: 5}, 60: {grade: 'B', points: 3}, 50: {grade: 'C', points: 1}, 0: {grade: 'No Grade', points: 0}},
             2: {90: {grade: 'A+', points: 7}, 70: {grade: 'A', points: 6}, 60: {grade: 'B', points: 4}, 50: {grade: 'C', points: 2}, 0: {grade: 'No Grade', points: 0}},
             3: {90: {grade: 'A+', points: 10}, 70: {grade: 'A', points: 9}, 60: {grade: 'B', points: 6}, 50: {grade: 'C', points: 3}, 0: {grade: 'No Grade', points: 0}},
-            4: {90: {grade: 'A+', points: 18}, 70: {grade: 'A', points: 13}, 60: {grade: 'B', points: 7}, 50: {grade: 'C', points: 3}, 0: {grade: 'No Grade', points: 0}},
-            5: {90: {grade: 'A+', points: 20}, 70: {grade: 'A', points: 15}, 60: {grade: 'B', points: 10}, 50: {grade: 'C', points: 5}, 0: {grade: 'No Grade', points: 0}},
+            4: {90: {grade: 'A+', points: 18}, 70: {grade: 'A', points: 15}, 60: {grade: 'B', points: 10}, 50: {grade: 'C', points: 5}, 0: {grade: 'No Grade', points: 0}},
+            5: {90: {grade: 'A+', points: 18}, 70: {grade: 'A', points: 15}, 60: {grade: 'B', points: 10}, 50: {grade: 'C', points: 5}, 0: {grade: 'No Grade', points: 0}},
             10: {90: {grade: 'A+', points: 15}, 70: {grade: 'A', points: 10}, 60: {grade: 'B', points: 7}, 50: {grade: 'C', points: 3}, 0: {grade: 'No Grade', points: 0}},
             20: {90: {grade: 'A+', points: 25}, 70: {grade: 'A', points: 20}, 60: {grade: 'B', points: 12}, 50: {grade: 'C', points: 6}, 0: {grade: 'No Grade', points: 0}}
         };
 
         function getPointsConfig(marks, groupSize) {
-            const thresholds = [90, 70, 60, 50, 0];
-            const key = groupSize === 1 ? 1 : groupSize <= 5 ? groupSize : groupSize <= 10 ? 10 : 20;
-            for (let t of thresholds) {
-                if (marks >= t) {
-                    return pointsTable[key][t] || {grade: 'No Grade', points: 0};
-                }
-            }
-            return {grade: 'No Grade', points: 0};
+    const thresholds = [90, 70, 60, 50, 0];
+    // Updated key selection: use 20 for any groupSize > 10
+    const key = groupSize === 1 ? 1 
+            : groupSize === 2 ? 2 
+            : groupSize === 3 ? 3 
+            : groupSize === 4 ? 4 
+            : groupSize === 5 ? 5 
+            : groupSize <= 10 ? 10 
+            : 20;  // Any >10 uses 20
+    for (let t of thresholds) {
+        if (marks >= t) {
+            return pointsTable[key][t] || {grade: 'No Grade', points: 0};
         }
+    }
+    return {grade: 'No Grade', points: 0};
+}
 
         function assignRanksAndBonuses(studentMarks) {
             studentMarks.sort((a, b) => b.marks - a.marks);
@@ -436,11 +443,11 @@
                 const placeDisplay = s.place ? `${s.place}${suffix[Math.min(3, s.place - 1)]}${bonus > 0 ? ` (Bonus: +${bonus})` : ''}` : '-';
                 return `
                     <tr>
+                        <td>${placeDisplay}</td>
                         <td>${s.codeLetter}</td>
                         <td>${s.chestNo}</td>
                         <td>${s.name}</td>
                         <td>${s.team}</td>
-                        <td>${placeDisplay}</td>
                         <td>${s.grade}</td>
                         <td>${s.points}</td>
                         <td>
